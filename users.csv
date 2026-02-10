@@ -1,3 +1,5 @@
 company,username,password_hash,role
 ALL,admin,Jero1234,admin
+jero,user1,,user2
+
 
