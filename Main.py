@@ -74,20 +74,7 @@ def bootstrap_admin():
 def load_core_metrics():
     if not METRICS_FILE.exists():
         raise FileNotFoundError(f"No encuentro {METRICS_FILE}. Poné Metricas.xlsx junto a main.py")
-    try:
-        core = pd.read_excel(METRICS_FILE, sheet_name="Core")
-    except ImportError:
-        raise ImportError(
-            "Falta instalar openpyxl. Agregalo a requirements.txt: openpyxl==3.1.5"
-        )
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            f"No encuentro el archivo de métricas en: {METRICS_FILE}. "
-            "Subí Metricas.xlsx al repo junto a Main.py."
-        )
-
-
-    
+        
     core = pd.read_excel(METRICS_FILE, sheet_name="Core")
     # Esperamos columnas: Métrica, Qué mide (pero toleramos nombres parecidos)
     core_cols = {c.lower().strip(): c for c in core.columns}
@@ -386,6 +373,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
