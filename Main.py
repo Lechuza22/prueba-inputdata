@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-import bcrypt
+import hashlib
 
 # -----------------------------
 # Config
@@ -28,14 +28,10 @@ SUB_DIR.mkdir(parents=True, exist_ok=True)
 # Helpers: Users & Auth
 # -----------------------------
 def _hash_password(plain: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(plain.encode("utf-8"), salt).decode("utf-8")
+    return hashlib.sha256(plain.encode("utf-8")).hexdigest()
 
 def _verify_password(plain: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
-    except Exception:
-        return False
+    return hashlib.sha256(plain.encode("utf-8")).hexdigest() == hashed
 
 def load_users() -> pd.DataFrame:
     if not USERS_FILE.exists():
@@ -378,3 +374,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
