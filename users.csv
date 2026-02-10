@@ -1,5 +1,4 @@
 company,username,password_hash,role
-ALL,admin,Jero1234,admin
-jero,user1,,user2
+ALL,admin,5938e5b0976d8077496787193d179a2900ac9b3b5d5dc63d8cb1dceca983ec65,admin
 
 
