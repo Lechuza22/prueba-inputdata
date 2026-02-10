@@ -5,9 +5,10 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
+
 import pandas as pd
 import streamlit as st
-import hashlib
+import bcrypt
 
 # -----------------------------
 # Config
@@ -27,10 +28,14 @@ SUB_DIR.mkdir(parents=True, exist_ok=True)
 # Helpers: Users & Auth
 # -----------------------------
 def _hash_password(plain: str) -> str:
-    return hashlib.sha256(plain.encode("utf-8")).hexdigest()
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(plain.encode("utf-8"), salt).decode("utf-8")
 
 def _verify_password(plain: str, hashed: str) -> bool:
-    return hashlib.sha256(plain.encode("utf-8")).hexdigest() == hashed
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 def load_users() -> pd.DataFrame:
     if not USERS_FILE.exists():
@@ -74,7 +79,7 @@ def bootstrap_admin():
 def load_core_metrics():
     if not METRICS_FILE.exists():
         raise FileNotFoundError(f"No encuentro {METRICS_FILE}. Poné Metricas.xlsx junto a main.py")
-        
+
     core = pd.read_excel(METRICS_FILE, sheet_name="Core")
     # Esperamos columnas: Métrica, Qué mide (pero toleramos nombres parecidos)
     core_cols = {c.lower().strip(): c for c in core.columns}
@@ -373,7 +378,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
