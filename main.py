@@ -1,3 +1,4 @@
+
 import re
 import json
 from datetime import datetime
@@ -117,107 +118,56 @@ def login_screen():
         else:
             st.error("Credenciales incorrectas.")
 
-CORE_METRICS = [
-    "Revenue",
-    "Growth (QoQ / MoM)",
-    "Gross Margin",
-    "EBITDA / Resultado operativo",
-    "Cash disponible",
-    "Runway",
-    "Clientes / Unidades activas",
-    "Concentración de ingresos",
-    "Cash Flow operativo",
-    "Headcount",
-]
-
 def portal_screen():
-    auth = st.session_state["auth"]
-    username = auth["username"]
-    role = auth["role"]
-    company = auth["company"]  # para cliente viene fijo
+    render_header()
+    company = st.session_state["company"]
 
-    # Sidebar: periodo
     with st.sidebar:
-        st.write(f"**Usuario:** {username}")
-        st.write(f"**Rol:** {role}")
+        st.write(f"**Compañía:** {company}")
         if st.button("Cerrar sesión"):
-            st.session_state.pop("auth", None)
+            st.session_state.pop("company", None)
             st.rerun()
 
         st.header("Período")
         year = st.number_input("Año", min_value=2020, max_value=2100, value=datetime.now().year, step=1)
         quarter = st.selectbox("Quarter", ["Q1", "Q2", "Q3", "Q4"])
-        month_in_q = st.selectbox("Mes dentro del quarter", [1, 2, 3])  # si lo querés mensual dentro del Q
+        month_in_q = st.selectbox("Mes dentro del quarter", [1, 2, 3])
 
-        st.header("Empresa")
-        st.info(f"Empresa asignada: {company}")
+    tabs = st.tabs(["Upload reportes (raw)", "Carga manual (Core)"])
 
-    st.subheader("Carga de Reporte")
+    # Upload raw
+    with tabs[0]:
+        st.subheader("Subir reportes en formato convencional")
+        up = st.file_uploader("Subir archivo (xlsx/csv/pdf/etc.)", type=None)
+        if up is not None and st.button("Guardar archivo"):
+            path = save_raw_upload(company, int(year), quarter, int(month_in_q), up)
+            st.success(f"Guardado: {path}")
 
-    # -------- A) Upload RAW (obligatorio) --------
-    st.markdown("### 1) Subir archivos (obligatorio)")
-    uploaded_files = st.file_uploader(
-        "Subí PDF / Excel / CSV (podés subir más de uno)",
-        type=["pdf", "xlsx", "xls", "csv"],
-        accept_multiple_files=True
-    )
+    # Core manual
+    with tabs[1]:
+        st.subheader("Carga manual de métricas Core")
+        st.caption("Estas métricas son las core acordadas para el MVP.")
 
-    # Guardamos estado en session para habilitar submit
-    st.session_state["has_uploads"] = bool(uploaded_files)
+        values = {}
+        missing = []
 
-    # -------- B) Carga manual core (obligatorio) --------
-    st.markdown("### 2) Cargar métricas core (obligatorio)")
-    st.caption("Completá las métricas core del período seleccionado.")
+        with st.form("core_form"):
+            for m in CORE_METRICS:
+                v = st.number_input(m["name"], value=0.0, step=0.01, help=m["what"])
+                provided = st.checkbox(f"Incluir {m['name']}", value=True)
+                if provided:
+                    values[m["name"]] = float(v)
+                else:
+                    missing.append(m["name"])
 
-    manual = {}
-    missing = []
+            submitted = st.form_submit_button("Enviar métricas Core")
 
-    c1, c2 = st.columns(2)
-    for i, m in enumerate(CORE_METRICS):
-        col = c1 if i % 2 == 0 else c2
-        with col:
-            val = st.text_input(m, key=f"metric__{m}")  # text para permitir %, números, etc.
-            manual[m] = val.strip()
-            if manual[m] == "":
-                missing.append(m)
-
-    st.session_state["manual_ok"] = (len(missing) == 0)
-
-    if missing:
-        st.warning(f"Faltan {len(missing)} métricas: " + ", ".join(missing))
-
-    # -------- C) Submit final (habilitado sólo si cumple ambos) --------
-    st.markdown("### 3) Enviar reporte")
-    ready = st.session_state["has_uploads"] and st.session_state["manual_ok"]
-
-    st.button(
-        "Submit final",
-        disabled=not ready,
-        help="Se habilita cuando subiste al menos 1 archivo y completaste todas las métricas core."
-    )
-
-    if ready and st.button("Confirmar envío"):
-        # 1) Guardar RAW uploads local (MVP)
-        saved_paths = []
-        for f in uploaded_files:
-            p = save_raw_upload(company, username, int(year), quarter, int(month_in_q), f)
-            saved_paths.append(str(p))
-
-        # 2) Guardar métricas manuales (JSON+CSV local)
-        metrics_payload = {
-            "manual_metrics": manual,
-            "raw_files": saved_paths,
-        }
-        submission_path = save_submission(company, username, int(year), quarter, int(month_in_q), metrics_payload)
-
-        st.success("Reporte enviado y guardado.")
-        st.write("Submission:", submission_path)
-
-        # 3) (FUTURO) Subir a Drive:
-        # - crear carpeta si no existe: f"{company} {quarter} {year}"
-        # - subir raw files
-        # - generar excel resumen y subirlo
-
+        if submitted:
+            # Si querés core obligatorias, invertimos esto:
+            # if missing: error
+            # Por ahora permitimos enviar lo que haya.
+            path = save_core_metrics(company, int(year), quarter, int(month_in_q), values)
+            st.success(f"Métricas guardadas: {path}")
 
 # =========================
 # MAIN
@@ -232,4 +182,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
